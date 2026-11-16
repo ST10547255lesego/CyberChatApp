@@ -4,6 +4,7 @@
  */
 package cyberchatapp;
 
+import java.io.IOException;
 import java.util.Scanner;
 
 /**
@@ -11,7 +12,7 @@ import java.util.Scanner;
  * @author Student
  */
 public class Main {
-    public static void main(String[]args){
+    public static void main(String[]args) throws IOException{
         Scanner input = new Scanner(System.in);
         
         //User is requied to enter information
@@ -54,7 +55,10 @@ public class Main {
         String registeredUsername = "test_";
         String registeredPassword = "Password1!";
         if (login.loginUser(username, password, registeredUsername, registeredPassword)){
-            System.out.println("Welcome"+ firstName + " " + lastName + ", it is great to see you again. ");
+            System.out.println("Welcome "+ firstName + " " + lastName + ", it is great to see you again. ");
+            
+            Messages messages = new Messages();
+            messages.displayM();
         }
         else{
             System.out.println("Username or password is incorrect, please try again.");

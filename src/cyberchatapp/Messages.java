@@ -4,8 +4,10 @@
  */
 package cyberchatapp;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import static java.util.Objects.hash;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -23,6 +25,7 @@ public class Messages {
     String[] messageTexts;
     String[] messageHashes;
     String[] storedMessages;
+    String[] messageFlags;
     
     int totalMessages = 0;
     int storedCount = 0;
@@ -47,6 +50,7 @@ public class Messages {
         messageTexts = new String[messageLimit];
         messageHashes = new String[messageLimit];
         storedMessages = new String[messageLimit];
+        messageFlags = new String[messageLimit];
         
         int opt;
         
@@ -54,6 +58,7 @@ public class Messages {
             System.out.println("1. Send Messages");
             System.out.println("2. Show recently sent messages");
             System.out.println("3. Quit");
+            System.out.println("4. Stored Messages");
             System.out.println("Choose an option: ");
             
             opt = input.nextInt();
@@ -74,7 +79,52 @@ public class Messages {
             } else if (opt == 3){ 
                  System.out.println("Quit");
                     
-            } else{
+            }else if (opt == 4) {
+                System.out.println("Stored Messages");
+                System.out.println("1. Display sender and recipient");
+                System.out.println("2. Display longest message");
+                System.out.println("3. Search recipient");
+                System.out.println("4. Search recipient");
+                System.out.println("5. Delete message using hash");
+                System.out.println("Display full report");
+                System.out.print("Choose an option: ");
+                
+                int reportChoice = input.nextInt();
+                input.nextLine();
+                
+                if (reportChoice == 1){
+                    readStoredMessages();
+                }
+                else if (reportChoice == 2) {
+                    System.out.println("Longest message: " + longestMessage());
+                }
+                 else if (reportChoice == 3) {
+                    System.out.println("Enter message ID: ");
+                 }
+                  else if (reportChoice == 4) {
+                    System.out.println("Enter recipient number: ");
+                    String recipient = input.nextLine();
+                    searchAllMessages(recipient);
+                  
+                  else if (reportChoice == 5) {
+                    System.out.print("Enter message hash: ");
+                    String hash = input.nextLine();
+                   }
+                   if (deleteMessage(hash)){
+                       System.out.println("Message successfully deleted.");
+                   }
+                   else {
+                       System.out.println("Message not found. ");
+                   }
+                }else if (reportChoice == 6) {
+                    displayReport();
+                }
+                else {
+                    System.out.println("This option is not added yet.");
+                }
+                
+            } 
+            else{
                 System.out.println("Invaild input.");
                 
             }
@@ -144,8 +194,8 @@ public class Messages {
             messageIDs[totalMessages] = messageID;
             recipients[totalMessages] = recipient;
             messageTexts[totalMessages] = message;
-            
             messageHashes[totalMessages] = createMessageHash(messageID, totalMessages, message);
+            messageFlags[totalMessages] = "Sent";
             
             System.out.println("Message successfully sent");
             System.out.println("Message ID:"+ messageIDs[totalMessages]);
@@ -157,13 +207,27 @@ public class Messages {
             return "Message sent";
         }
         else if (choice == 2){
-            System.out.println("messgae disregarded. ");
+            
+            messageIDs[totalMessages] = messageID;
+            recipients[totalMessages] = recipient;
+            messageTexts[totalMessages] = message;
+            messageHashes[totalMessages] = createMessageHash(messageID, totalMessages, message);
+            messageFlags[totalMessages] = "Disregarded";
+            totalMessages++;
+            System.out.println("message disregarded. ");
             return "Message disregarded";
         }
         else if (choice == 3){
+            
+            messageIDs[totalMessages] = messageID;
+            recipients[totalMessages] = recipient;
+            messageTexts[totalMessages] = message;
+            messageHashes[totalMessages] = createMessageHash(messageID, totalMessages, message);
+            messageFlags[totalMessages] = "Stored";
             storedMessages[storedCount] = "{\"messageID\":\""+ messageID + "\",\"recipient\":\""+ recipient +
                     "\",\"message\":\""+ message.replace("\\", "\\\\").replace("\"", "\\\"")+"\"}";
-            
+            totalMessages++;
+            storeMessage();
             storedCount++;
             storeMessage();
             System.out.println("Message successfully stored");
@@ -173,6 +237,7 @@ public class Messages {
             System.out.println("Invaild option.");
             return "Invaild option";
         }
+        
          
     }
     //Display allsent messages
@@ -197,9 +262,19 @@ public class Messages {
         
         FileWriter writer = new FileWriter("messages.json");
         writer.write("[\n");
+        boolean first = true;
         
-        for (int i = 0; i < storedCount; i++){
-            writer.write(storedMessages[i]);
+        for (int i = 0; i < totalMessages; i++){
+            if ("Stored".equals(messageFlags[i])){
+                if (!first) {
+                    writer.write(",\n");
+                }
+            }
+            writer.write("{\"messageID\":\"" + messageIDs[i]+"\",\"messageHash\":\""
+                    + messageHashes[i] + "\",\"recipient\":\"" + recipients[i] + "\",\"message\":\"" + 
+                    messageTexts[i].replace("\\", "\\\\").replace("\"", "\\\"") +
+                    "\",\"flag\":\"" + messageFlags[i] + "\"}");
+            first = false;
             
             if (i < storedCount - 1){
                 writer.write(",");
@@ -209,10 +284,128 @@ public class Messages {
         writer.write("]");
         writer.close();
     }
+    public String longestMessage() {
+        String longest = "";
+        
+        for (int i = 0; i < totalMessages; i++){
+            if ("Stored".equals(messageFlags[i])){
+            }
+            if (messageTexts[i].length()>longest.length()){
+                longest = messageTexts[i];
+            }
+            if (longest.isEmpty()){
+                return "No Stored messages found.";
+            }
+        }
+        return longest;
+        
+    }
+    public void searchMessageID(String id){
+        for (int i = 0; i < totalMessages; i++){
+            
+            if ("Stored".equals(messageFlags[i]) && messageIDs[i].equals(id)) {
+                System.out.println("Recipent: "+ recipients[i]);
+                System.out.println("Message: " + messageTexts[i]);
+                return;
+            }
+        }
+        System.out.println("Messages not found.");
+    }
+    
+    public void searchAllMessages(String recipient){
+        boolean found = false;
+        
+        for (int i = 0; i < totalMessages; i++) {
+            if ("Stored".equals(messageFlags[i]) && recipients[i].equals(recipients)) {
+                System.out.println("Message ID: " + messageTexts[i]);
+                 System.out.println("Message:  " + messageTexts[i]);
+                 
+                 found = true;
+            }
+        }
+        if (!found){
+            System.out.println("No messages found for this recipient.");
+        }
+    }
+    
+    public boolean deleteMessage(String hash) throws IOException {
+        for (int i = 0; i < totalMessages; i++){
+            if("Stored".equals(messageFlags[i]) && messageHashes[i].equals(hash))
+                
+                for (int j = i; j < totalMessages - 1; j++) {
+                    messageIDs[j] = messageIDs[j + 1];
+                    recipients[j] = recipients[j + 1];
+                    messageTexts[j] = messageTexts[j + 1];
+                    messageHashes[j] = messageHashes[j + 1];
+                    messageFlags[j] = messageFlags[j + 1];
+                }
+                totalMessages--;
+                storeMessage();
+                return true;
+            }
+        
+        return false;
+    }
+    
+    public void displayReport() {
+        boolean found = false;
+        
+        if (totalMessages == 0){
+            System.out.println("No messages available for the report. ");
+            return;
+        }
+        System.out.println("Full Message Report");
+        System.out.println("-----------------------");
+        for (int i = 0; i < totalMessages; i++) {
+            System.out.println("Message ID: " + messageIDs[i]);
+            System.out.println("Message Hash: " + messageHashes[i]);
+            System.out.println("Recipient: " + recipients[i]);
+            System.out.println("Message: " + messageTexts[i]);
+            System.out.println("Flag: " + messageFlags[i]);
+            System.out.println("------------------------");
+            
+            found = true;
+        }
+        if (!found) {
+            System.out.println("No stored messages available");
+    }
+    }   
+   public void readStoredMessages() throws IOException {
+       File file = new File ("messages.json");
+       
+       if (!file.exists()) {
+           System.out.println("No stored messages found.");
+           return;
+       }
+       Scanner reader = new Scanner(file);
+       
+       while (reader.hasNextLine()){
+           System.out.println(reader.nextLine());
+       }
+       reader.close();
+   }
+   public void displayStoredSenderRecipient() {
+       boolean found = false;
+       
+       for (int i = 0; i < totalMessages; i++) {
+           
+           if ("Stored".equals(messageFlags[i])) {
+               System.out.println("Recipient: " + recipients[i]);
+               System.out.println("-----------------------");
+               found = true;
+           }
+       }
+       if (!found) {
+           System.out.println("No stored messages found. ");
+       }
+   }
+
+    
+ 
     
 
     
         
 
    
-} 
+}
